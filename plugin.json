@@ -1,0 +1,19 @@
+{
+  "id": "neobase.astropole",
+  "name": "Astropole",
+  "version": "1.0.0",
+  "author": "NDesumeur",
+  "description": "Une ville spatiale idle : les bâtiments produisent des crédits, même NeoBase fermé.",
+  "icon": "icon.png",
+  "entry": "index.js",
+  "view": "astropole",
+  "neobase": ">=4.0.0",
+  "type": "app",
+  "category": "Jeux",
+  "mobile": false,
+  "system": false,
+  "dependencies": {},
+  "permissions": [
+    "full"
+  ]
+}
