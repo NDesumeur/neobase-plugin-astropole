@@ -1,7 +1,7 @@
 {
   "id": "neobase.astropole",
   "name": "Astropole",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "author": "NDesumeur",
   "description": "Une ville spatiale idle : les bâtiments produisent des crédits, même NeoBase fermé.",
   "icon": "icon.png",

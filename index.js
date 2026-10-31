@@ -5,7 +5,10 @@ const HTML = "<div class=\"appWrap\">\n      <div class=\"agHead\"><span class=\
 /*CSS-MOVED*/ const CSS = `.gameBox{display:grid;place-items:center;padding:10px;background:#05010b;box-shadow:0 0 0 3px var(--line2)}
 .ciList{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:8px}
 .ciRow{--fill:var(--win);display:flex;align-items:center;gap:10px;padding:8px 10px}
-.ciDot{width:10px;height:10px;flex:none}
+.ciRow{border-left:4px solid var(--c,#7fe0ee)}
+.ciIcon{width:51px;height:45px;flex:none;image-rendering:pixelated;background:linear-gradient(#0b031c,#2a1d52);box-shadow:inset 0 0 0 2px var(--line2)}
+.ciBar{height:4px;background:#2a1d52;margin-top:4px}.ciBar i{display:block;height:100%;background:var(--c,#7fe0ee)}
+.ciTxt b{font-size:15px}
 .ciTxt{flex:1;display:flex;flex-direction:column;min-width:0}
 .ciTxt small{color:var(--muted)}
 .ciBtn{flex:none;min-width:110px;font-size:12px;white-space:nowrap}
@@ -142,44 +145,107 @@ function ciUpdate() {
   for (const p of ci.pops) { p.y -= .4; p.t--; } ci.pops = ci.pops.filter(p => p.t > 0);
 }
 /* ---------- drawing: the city grows with each tier, the sky changes with the colonies ---------- */
+const ciHash = (a, b = 0, c = 0) => { let h = Math.imul(a + 374761393, 668265263) ^ Math.imul(b + 1274126177, 2246822519) ^ Math.imul(c + 3266489917, 3266489917); h = Math.imul(h ^ h >>> 13, 1274126177); return (h ^ h >>> 16) >>> 0; };
+const ciShade = (c, k) => k >= 0 ? mixc(c, '#ffffff', k) : mixc(c, '#000000', -k);
+const ciRgba = (hex, a) => 'rgba(' + [1, 3, 5].map(i => parseInt(hex.substr(i, 2), 16)).join(',') + ',' + a + ')';
+function ciBlk(g, x, y, w, h, col) {  // un volume : contour sombre, face éclairée à gauche, ombre à droite
+  px(g, '#0d0620', x - 1, y - 1, w + 2, h + 2); px(g, col, x, y, w, h); px(g, ciShade(col, .3), x, y, 1, h); px(g, ciShade(col, .2), x, y, w, 1); px(g, ciShade(col, -.35), x + w - 1, y, 1, h);
+}
+function ciWins(g, x, y, w, h, seed, t) {  // des fenêtres, certaines allumées, une qui clignote de temps en temps
+  for (let yy = y + 2; yy + 2 <= y + h - 1; yy += 4) for (let xx = x + 2; xx + 2 <= x + w - 3; xx += 4) { const hv = ciHash(seed, xx, yy); px(g, hv % 7 < 4 ? (hv % 53 === (t >> 6) % 53 ? '#fff6c8' : '#ffd07a') : '#241a48', xx, yy, 2, 2); }
+}
+// 8 familles de bâtiments : largeur et dessin (x = bord gauche, b = sol, h = hauteur, col = couleur du palier, s = graine, t = temps)
+const CI_W = [22, 22, 24, 16, 20, 22, 10, 10];
+const CI_ART = [
+  (g, x, b, h, col, s, t) => {  // module d'habitat : dôme de verre sur une dalle
+    const r = 10; ciBlk(g, x, b - 3, 22, 3, '#4a3c86');
+    for (let dy = 0; dy < r; dy++) { const hw = Math.round(Math.sqrt(r * r - dy * dy)), y = b - 4 - dy; px(g, '#0d0620', x + 11 - hw - 1, y, 1, 1); px(g, '#0d0620', x + 11 + hw, y, 1, 1); px(g, ciShade(col, .5 - dy / r * .5), x + 11 - hw, y, hw * 2, 1); }
+    px(g, '#0d0620', x + 5, b - 4 - r, 12, 1); px(g, '#ffffff', x + 5, b - 12, 2, 1); px(g, '#ffffff', x + 4, b - 11, 1, 2);
+    for (let k = 0; k < 4; k++) px(g, ciHash(s, k) % 3 ? '#ffd07a' : '#241a48', x + 5 + k * 4, b - 7, 2, 3);
+  },
+  (g, x, b, h, col, s, t) => {  // serre hydroponique
+    ciBlk(g, x, b - 11, 22, 11, '#2f6a52'); for (let k = 0; k < 5; k++) { px(g, k % 2 ? '#8ee8a0' : '#5fd08a', x + 2 + k * 4, b - 9, 3, 7); px(g, '#2a8a4a', x + 2 + k * 4, b - 3, 3, 2); }
+    px(g, '#c8ffe0', x + 1, b - 11, 20, 1); px(g, '#ffffff', x + 3 + (t >> 4) % 14, b - 10, 1, 4);
+  },
+  (g, x, b, h, col, s, t) => {  // champ solaire
+    for (let q = 0; q < 3; q++) { const px0 = x + q * 8; px(g, '#5a5470', px0 + 3, b - 5, 2, 5); ciBlk(g, px0, b - 10, 7, 5, '#2f6bc0'); px(g, '#1d4f9a', px0 + 3, b - 10, 1, 5); px(g, '#1d4f9a', px0, b - 8, 7, 1); px(g, '#cfe8ff', px0 + (q * 2 + (t >> 3)) % 6, b - 9, 1, 3); }
+  },
+  (g, x, b, h, col, s, t) => {  // mine d'astéroïdes : grue et benne
+    ciBlk(g, x, b - 6, 16, 6, '#4a4a60'); ciBlk(g, x + 10, b - h, 4, h - 6, '#6a6a84'); px(g, '#0d0620', x, b - h - 1, 15, 4); px(g, '#e0b860', x + 1, b - h, 13, 2);
+    const sw = Math.round(Math.sin(t / 30 + s) * 2); px(g, '#222', x + 3 + sw, b - h + 2, 1, 9); ciBlk(g, x + 1 + sw, b - h + 10, 5, 3, '#a08a70'); px(g, '#a08a70', x - 4, b - 3, 4, 3); px(g, '#6a5a48', x - 6, b - 1, 6, 1);
+  },
+  (g, x, b, h, col, s, t) => {  // raffinerie de glace : deux cuves et une cheminée qui fume
+    ciBlk(g, x, b - h + 4, 8, h - 4, '#c9e8ff'); ciBlk(g, x + 8, b - h + 10, 6, h - 10, '#a8d0f0'); px(g, '#6aa0d0', x + 1, b - h + 9, 6, 1); px(g, '#6aa0d0', x + 1, b - h + 15, 6, 1);
+    ciBlk(g, x + 15, b - h - 6, 4, h + 6, '#8f8fa8'); px(g, '#ff5a5a', x + 15, b - h - 6, 4, 2); px(g, '#ff5a5a', x + 15, b - h, 4, 2);
+    for (let k = 0; k < 4; k++) { const u = ((t >> 1) + k * 9) % 36; px(g, ciRgba('#e6e0ff', .55 - u / 80), x + 16 + Math.round(Math.sin(u / 6 + k) * 2), b - h - 8 - u / 2 | 0, 2, 2); }
+  },
+  (g, x, b, h, col, s, t) => {  // chantier naval : portique et coque en construction
+    px(g, '#0d0620', x - 1, b - h - 1, 24, 4); px(g, '#6a6490', x, b - h, 22, 2); ciBlk(g, x, b - h + 2, 2, h - 2, '#6a6490'); ciBlk(g, x + 20, b - h + 2, 2, h - 2, '#6a6490');
+    ciBlk(g, x + 4, b - 9, 14, 6, col); px(g, '#ffffff', x + 14, b - 8, 3, 2); px(g, ciShade(col, -.4), x + 5, b - 4, 12, 1); px(g, '#ffd07a', x + 2, b - 3, 18, 1);
+    if ((t >> 3) % 3) px(g, '#fff6c8', x + 5 + (t >> 2) % 10, b - 10, 2, 2);
+  },
+  (g, x, b, h, col, s, t) => {  // laboratoire : tour vitrée, parabole, balise
+    ciBlk(g, x, b - h, 10, h, col); ciWins(g, x, b - h, 10, h, s, t); px(g, '#c0c0d0', x + 4, b - h - 8, 1, 8); px(g, '#dddde8', x + 6, b - h - 5, 3, 2); px(g, (t >> 4) % 2 ? '#ff4f6d' : '#5a1020', x + 4, b - h - 9, 1, 1);
+  },
+  (g, x, b, h, col, s, t) => {  // flèche de lumière
+    ciBlk(g, x + 3, b - h, 4, h, col); for (let k = 0; k < 3; k++) px(g, '#ffffff', x + (k % 2), b - h + 8 + k * 12, 10 - (k % 2) * 2, 2);
+    const glow = (t >> 3) % 2; px(g, ciShade(col, .6), x + 4, b - h - 10, 2, 10); px(g, glow ? '#ffffff' : '#ffd07a', x + 4, b - h - 11, 2, 2);
+  },
+];
+function ciPaint(g, i, x, b, h, t, seed) { CI_ART[i % 8](g, x, b, h, CI.cols[i % CI.cols.length], seed, t); }
+function ciPlanet(pc, sky) {  // la planète, dessinée une fois : bandes, ombre, cratères
+  const key = pc + sky; if (ci.planet?.key === key) return ci.planet.cv;
+  const cv = document.createElement('canvas'), R = 22; cv.width = cv.height = R * 2 + 14; const g = cv.getContext('2d');
+  for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+    const d = Math.hypot(dx, dy); if (d > R) continue;
+    const lit = (-dx * .6 - dy * .8) / R, band = Math.sin(dy / 2.6 + Math.sin(dx / 9)) * .08;
+    let c = mixc(pc, '#ffffff', Math.max(0, lit) * .35 + band); if (lit < -.1) c = mixc(c, sky, Math.min(.85, -lit * .9)); if (d > R - 1.2) c = mixc(c, sky, .35);
+    px(g, c, dx + R + 7, dy + R + 7);
+  }
+  for (const [cx, cy, cr] of [[-8, -4, 3], [6, 8, 4], [4, -12, 2]]) for (let dy = -cr; dy <= cr; dy++) for (let dx = -cr; dx <= cr; dx++) if (Math.hypot(dx, dy) <= cr && Math.hypot(cx + dx, cy + dy) < R - 2) px(g, mixc(pc, sky, .35), cx + dx + R + 7, cy + dy + R + 7);
+  ci.planet = {key, cv}; return cv;
+}
 function ciDraw() {
   const g = ci.g, t = ci.tick, s = ciSave(), W = CI.W, H = CI.H, ground = 176;
-  const sky = ['#0b031c', '#06121f', '#140320', '#031a14'][s.colonies % 4];
-  g.fillStyle = sky; g.fillRect(0, 0, W, H);
-  const r = seeded(5 + s.colonies); for (let i = 0; i < 90; i++) { const x = Math.floor(r() * W), y = Math.floor(r() * ground); px(g, (i + (t >> 5)) % 11 ? 'rgba(217,198,255,.35)' : '#ffffff', x, y); }
-  // a planet in the sky, a ring once there are many tiers
-  const pc = CI.cols[s.colonies % CI.cols.length]; for (let dy = -18; dy <= 18; dy++) { const w = Math.round(Math.sqrt(324 - dy * dy)); px(g, dy < -6 ? pc : mixc(pc, sky, .45), 320 - w, 40 + dy, w * 2, 1); }
-  if (s.b.length > 6) { g.strokeStyle = '#ffd07a88'; g.beginPath(); g.ellipse(320, 40, 30, 6, -.3, 0, Math.PI * 2); g.stroke(); }
-  // ground
-  px(g, '#2a1f50', 0, ground, W, H - ground); px(g, '#3a2a6e', 0, ground, W, 2);
-  for (let x = 0; x < W; x += 16) px(g, '#1c1238', x + (x * 7) % 11, ground + 8 + (x * 3) % 20, 6, 2);
-  // one row of structures per tier: more of them as you own more (1, 2, 4, 8 … shown by the log of the count)
-  s.b.forEach((n, i) => {
-    if (!n) return;
-    const k = Math.min(10, 1 + Math.floor(Math.log2(n))), col = CI.cols[i % CI.cols.length], kind = i % 8, rr = seeded(i * 31 + 7);
-    for (let j = 0; j < k; j++) {
-      const x = Math.floor(rr() * (W - 30)) + 6, h = 10 + Math.floor(rr() * 18) + Math.min(60, i * 4), y = ground - h;
-      if (kind === 0) { px(g, col, x, ground - 8, 14, 8); px(g, '#ffffff', x + 4, ground - 12, 6, 4); }                                  // dome module
-      else if (kind === 1) { px(g, '#5fd08a55', x, ground - 12, 18, 12); px(g, col, x + 2, ground - 6, 14, 2); px(g, '#ffffff33', x, ground - 12, 18, 1); }  // greenhouse
-      else if (kind === 2) { for (let q = 0; q < 3; q++) px(g, '#4f9fe0', x + q * 6, ground - 6, 5, 3); px(g, col, x, ground - 3, 17, 1); }    // solar field
-      else if (kind === 3) { px(g, '#8f8fa8', x + 4, y, 4, h); px(g, col, x, y, 12, 3); px(g, '#4a4a60', x + 1, ground - 6, 10, 6); }          // mine tower
-      else if (kind === 4) { px(g, col, x, y + 6, 10, h - 6); px(g, '#ffffff', x + 2, y + 6, 6, 2); px(g, '#8f8fa8', x + 4, y, 2, 6); }        // refinery
-      else if (kind === 5) { px(g, '#5a5470', x, y, 2, h); px(g, '#5a5470', x + 16, y, 2, h); px(g, '#5a5470', x, y, 18, 2); px(g, col, x + 5, ground - 10, 8, 10); }  // shipyard crane
-      else if (kind === 6) { px(g, col, x + 3, y, 8, h); px(g, '#ffffff', x + 1, y + 4, 12, 3); for (let q = 6; q < h - 2; q += 5) px(g, '#ffd07a', x + 5, y + q, 2, 2); }  // tower
-      else { px(g, col, x + 6, y - 20, 2, h + 20); px(g, '#ffffff', x + 2, y - 22, 10, 2); }                                            // spire
-      if ((t + j * 40 + i * 13) % 160 < 80) px(g, '#ffd07a', x + 6, y - (kind === 7 ? 23 : 1), 1, 1);  // blinking light
-    }
+  const sky = ['#0b031c', '#06121f', '#140320', '#031a14'][s.colonies % 4], glow = ['#4a1f7a', '#0f4a6a', '#6a1f5a', '#0f6a4a'][s.colonies % 4];
+  // le ciel : bandes qui s'éclairent vers l'horizon
+  for (let y = 0; y < ground; y += 4) px(g, mixc(sky, glow, Math.pow(y / ground, 3) * .75), 0, y, W, 4);
+  const r = seeded(5 + s.colonies); for (let i = 0; i < 100; i++) { const x = Math.floor(r() * W), y = Math.floor(r() * (ground - 20)), tw = (i * 7 + (t >> 4)) % 13; px(g, tw === 0 ? '#ffffff' : tw < 3 ? 'rgba(217,198,255,.25)' : 'rgba(217,198,255,.55)', x, y); }
+  if (ci.meteor) { const m = ci.meteor; for (let k = 0; k < 10; k++) px(g, ciRgba('#ffffff', .8 - k * .08), m.x - k * 2, m.y - k, 1, 1); m.x += 3; m.y += 1.5; if (m.x > W + 20) ci.meteor = null; } else if (Math.random() < 1 / 900) ci.meteor = { x: Math.random() * 200, y: Math.random() * 50 };
+  // une planète (avec son anneau quand il y a beaucoup de paliers)
+  const pc = CI.cols[s.colonies % CI.cols.length];
+  if (s.b.length > 6) { g.strokeStyle = 'rgba(255,208,122,.35)'; g.lineWidth = 2; g.beginPath(); g.ellipse(322, 44, 36, 8, -.35, Math.PI, Math.PI * 2); g.stroke(); }
+  g.drawImage(ciPlanet(pc, sky), 322 - 29, 44 - 29);
+  if (s.b.length > 6) { g.beginPath(); g.ellipse(322, 44, 36, 8, -.35, 0, Math.PI); g.stroke(); }
+  // la skyline lointaine
+  const rs = seeded(77 + s.colonies); for (let x = 0; x < W; x += 6) { const h = 6 + Math.floor(rs() * 22); px(g, mixc(sky, glow, .35), x, ground - h, 6, h); if (rs() < .5) px(g, 'rgba(255,208,122,.5)', x + 2, ground - h + 3 + Math.floor(rs() * 4), 1, 1); }
+  // le sol : plateforme, route avec lampadaires, véhicules
+  px(g, '#1c1238', 0, ground, W, H - ground); px(g, '#3a2a6e', 0, ground, W, 2); px(g, '#2a1f50', 0, ground + 2, W, 6);
+  for (let x = 0; x < W; x += 24) { px(g, '#3a2a6e', x, ground + 8, 1, H - ground - 8); }
+  px(g, '#120a26', 0, 204, W, 8); for (let x = 0; x < W; x += 12) px(g, '#6a5aa0', x + (t >> 2) % 12, 207, 5, 1);
+  // les bâtiments, sur trois plans (le plus lointain est noyé dans la brume du ciel)
+  const items = []; const maxK = Math.max(0, ...s.b.map(n => n ? Math.min(10, 1 + Math.floor(Math.log2(n))) : 0));
+  for (let j = 0; j < maxK; j++) s.b.forEach((n, i) => { if (n && Math.min(10, 1 + Math.floor(Math.log2(n))) > j) items.push({ i, j }); });
+  const cur = [4, 14, 2], bases = [ground, ground + 6, ground + 13], layers = [[], [], []];
+  items.slice(0, 70).forEach((it, n) => {
+    const L = ciHash(it.i, it.j, 3) % 3, w = CI_W[it.i % 8], h = 14 + ciHash(it.i, it.j) % 12 + Math.min(34, it.i * 3);
+    if (cur[L] + w > W - 4) return; layers[L].push({ i: it.i, j: it.j, x: cur[L], h, b: bases[L] + (it.i % 8 === 3 || it.i % 8 === 4 ? 0 : 0) }); cur[L] += w + 3 + ciHash(it.i, it.j, 9) % 6;
   });
+  [2, 1, 0].forEach(L => {
+    for (const b of layers[L]) ciPaint(g, b.i, b.x, b.b, b.h, t + b.j * 40, ciHash(b.i, b.j, 5));
+    if (L) { g.fillStyle = ciRgba(mixc(sky, glow, .25), L === 2 ? .5 : .22); g.fillRect(0, ground - 70, W, 90); }
+  });
+  for (let k = 0, n = Math.min(5, s.b.length); k < n; k++) { const x = ((t * (k % 2 ? -1 : 1) * (.5 + k * .15) + k * 90) % (W + 20) + W + 20) % (W + 20) - 10; px(g, '#0d0620', x - 1, 205, 8, 4); px(g, ['#ff5ad9', '#7fe0ee', '#ffd07a', '#8ee8a0', '#ff7a4f'][k], x, 206, 6, 2); px(g, '#fff6c8', x + (k % 2 ? 0 : 5), 206, 1, 1); }
   for (const sh of ci.ships) {
-    if (sh.cargo) { px(g, '#ffd07a', sh.x, sh.y, 16, 5); px(g, '#ffffff', sh.x + 11, sh.y + 1, 4, 2); px(g, '#ff7a4f', sh.x - 3 - (t >> 2) % 2, sh.y + 1, 3, 3); }
-    else { px(g, '#d9c6ff', sh.x, sh.y, 5, 2); px(g, '#7fe0ee', sh.x + (sh.v > 0 ? -2 : 5), sh.y, 2, 2); }
+    if (sh.cargo) { px(g, '#0d0620', sh.x - 1, sh.y - 1, 18, 7); px(g, '#ffd07a', sh.x, sh.y, 16, 5); px(g, '#ffffff', sh.x + 11, sh.y + 1, 4, 2); px(g, '#ff7a4f', sh.x - 3 - (t >> 2) % 2, sh.y + 1, 3, 3); px(g, '#fff6c8', sh.x + 2, sh.y + 1, 2, 1); }
+    else { px(g, '#d9c6ff', sh.x, sh.y, 5, 2); px(g, '#7fe0ee', sh.x + (sh.v > 0 ? -2 : 5), sh.y, 2, 2); for (let k = 1; k < 5; k++) px(g, ciRgba('#7fe0ee', .4 - k * .07), sh.x + (sh.v > 0 ? -2 - k * 2 : 6 + k * 2), sh.y, 1, 1); }
   }
-  for (const p of ci.pops) { g.fillStyle = '#ffd07a'; g.font = '7px "Press Start 2P", monospace'; g.fillText(p.text, p.x, p.y); }
-  if (ci.flash) { g.fillStyle = `rgba(255,208,244,${ci.flash / 50})`; g.fillRect(0, 0, W, H); }
-  // the counter
-  g.fillStyle = 'rgba(11,3,28,.6)'; g.fillRect(0, 0, W, 26);
+  for (const p of ci.pops) { g.font = '7px "Press Start 2P", monospace'; g.fillStyle = '#05010b'; g.fillText(p.text, p.x + 1, p.y + 1); g.fillStyle = '#ffd07a'; g.fillText(p.text, p.x, p.y); }
+  if (ci.flash) { g.fillStyle = 'rgba(255,208,244,' + ci.flash / 50 + ')'; g.fillRect(0, 0, W, H); }
+  // le compteur
+  px(g, 'rgba(11,3,28,.72)', 0, 0, W, 28); px(g, '#3a2a6e', 0, 28, W, 1);
   g.font = '8px "Press Start 2P", monospace'; g.fillStyle = '#ffd07a'; g.fillText(ciFmt(ciL(s.cr)) + ' ⌬', 8, 12);
-  g.font = '6px "Press Start 2P", monospace'; g.fillStyle = '#d9c6ff'; g.fillText('+' + ciFmt(ciProd()) + ' / s', 8, 22);
+  g.font = '6px "Press Start 2P", monospace'; g.fillStyle = '#d9c6ff'; g.fillText('+' + ciFmt(ciProd()) + ' / s', 8, 23);
   g.textAlign = 'right'; g.fillText('COLONIE ' + (s.colonies + 1) + (ciL(s.mem) > -Infinity ? ' · ' + ciFmt(ciL(s.mem)) + ' MÉMOIRES' : ''), W - 8, 12); g.textAlign = 'left';
 }
 /* ---------- page: the list of buildings ---------- */
@@ -190,13 +256,14 @@ function ciUi(soft) {
   [...$('ciBuy').children].forEach(b => b.classList.toggle('main', b.dataset.k === String(k)));
   if (!soft || list.children.length !== n) list.replaceChildren(...Array.from({length: n}, (_, i) => {
     const row = el('div', 'ciRow px'), b = el('button', 'btn px ciBtn'); b.dataset.i = i;
-    row.append(Object.assign(el('span', 'ciDot'), {style: 'background:' + CI.cols[i % CI.cols.length]}), el('div', 'ciTxt'), b);
+    const ic = el('canvas', 'ciIcon'); ic.width = 34; ic.height = 30; ciPaint(ic.getContext('2d'), i, 17 - (CI_W[i % 8] >> 1), 28, 16, 0, i + 1);
+    row.style.setProperty('--c', CI.cols[i % CI.cols.length]); row.append(ic, el('div', 'ciTxt'), b);
     b.onclick = () => { ciBuy(i, s.buy === 'max' ? 'max' : s.buy); b.blur(); };
     return row;
   }));
   [...list.children].forEach((row, i) => {
     const have = s.b[i] || 0, kk = k === 'max' ? Math.max(1, ciMaxBuy(i)) : k, c = ciCost(i, kk), next = 25 - have % 25;
-    row.children[1].replaceChildren(el('b', '', ciName(i) + ' · ' + have), el('small', '', (have ? ciFmt(ciProdOf(i)) + ' / s' : 'chacun ' + ciFmt(ciProd0(i) + ciMult()) + ' / s') + ' · ×2 dans ' + next + (kk > 1 ? ' · achat ×' + kk.toLocaleString('fr-FR') : '')));
+    row.children[1].replaceChildren(el('b', '', ciName(i) + ' · ' + have), el('small', '', (have ? ciFmt(ciProdOf(i)) + ' / s' : 'chacun ' + ciFmt(ciProd0(i) + ciMult()) + ' / s') + ' · ×2 dans ' + next + (kk > 1 ? ' · achat ×' + kk.toLocaleString('fr-FR') : '')), (() => { const bar = el('div', 'ciBar'), f = el('i'); f.style.width = (have % 25) / 25 * 100 + '%'; bar.append(f); return bar; })());
     const btn = row.children[2]; btn.textContent = ciFmt(c); btn.disabled = c > ciL(s.cr) + 1e-9;
   });
 }
