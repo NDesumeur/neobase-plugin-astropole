@@ -226,11 +226,12 @@ function ciDraw() {
   // les bâtiments, sur trois plans (le plus lointain est noyé dans la brume du ciel)
   const items = []; const maxK = Math.max(0, ...s.b.map(n => n ? Math.min(10, 1 + Math.floor(Math.log2(n))) : 0));
   for (let j = 0; j < maxK; j++) s.b.forEach((n, i) => { if (n && Math.min(10, 1 + Math.floor(Math.log2(n))) > j) items.push({ i, j }); });
-  const cur = [4, 14, 2], bases = [ground, ground + 6, ground + 13], layers = [[], [], []];
-  items.slice(0, 70).forEach((it, n) => {
-    const L = ciHash(it.i, it.j, 3) % 3, w = CI_W[it.i % 8], h = 14 + ciHash(it.i, it.j) % 12 + Math.min(34, it.i * 3);
-    if (cur[L] + w > W - 4) return; layers[L].push({ i: it.i, j: it.j, x: cur[L], h, b: bases[L] + (it.i % 8 === 3 || it.i % 8 === 4 ? 0 : 0) }); cur[L] += w + 3 + ciHash(it.i, it.j, 9) % 6;
-  });
+  const SLOT = 34, N = Math.floor((W - 8) / SLOT), bases = [ground + 13, ground + 6, ground], layers = [[], [], []];  // SLOT : une case par bâtiment, la largeur du plus large + un espace
+  const rows = [[], [], []]; items.forEach(it => rows[it.j === 0 ? 0 : it.j % 2 ? 1 : 2].push(it)); rows[1] = [...rows[0].splice(N), ...rows[1].filter((_, k) => k % 2 === 0)]; rows[2] = rows[2].filter((_, k) => k % 3 === 0);  // devant : un de chaque sorte ; derrière : seulement quelques copies, pour que ça respire
+  rows.forEach((arr, L) => { const list = arr.slice(0, L ? Math.min(N - 1, L === 1 ? 7 : 5) : N), pad = (N - list.length) * SLOT / 2; list.forEach((it, n) => {
+    const w = CI_W[it.i % 8], h = 14 + ciHash(it.i, it.j) % 12 + Math.min(34, it.i * 3) + L * 9, x = 4 + pad + n * SLOT + (SLOT - w) / 2 + (L === 1 ? SLOT / 2 : L === 2 ? SLOT / 4 : 0);
+    if (x + w < W - 2) layers[L].push({ i: it.i, j: it.j, x, h, b: bases[L] });
+  }); });
   [2, 1, 0].forEach(L => {
     for (const b of layers[L]) ciPaint(g, b.i, b.x, b.b, b.h, t + b.j * 40, ciHash(b.i, b.j, 5));
     if (L) { g.fillStyle = ciRgba(mixc(sky, glow, .25), L === 2 ? .5 : .22); g.fillRect(0, ground - 70, W, 90); }
