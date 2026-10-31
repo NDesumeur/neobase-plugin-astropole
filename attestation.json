@@ -1,0 +1,9 @@
+{
+  "pluginId": "neobase.astropole",
+  "repo": "NDesumeur/neobase-plugin-astropole",
+  "version": "1.1.0",
+  "sha256": "4d7f3254d09502da60b6c18ce92b798e1771ec867f077307fde4c9952e033b6d",
+  "approvedAt": "2026-10-31T22:44:06.002Z",
+  "neobase": ">=4.0.0",
+  "signature": "JrzTaQLiW2hEgvUuX8IUPwFqJ3UCdSRn+cDi7JqemYaRfqXLsRVJAjCRhsFskjuzq3xgOv8ti4zriGqx3yR7DQ=="
+}
