@@ -2,11 +2,23 @@
 // Ses données sont dans le dossier du plugin, que NeoBase sauvegarde (synchro cloud et sauvegardes) ; à la première ouverture elle reprend ce que tu avais dans NeoBase.
 // Elle demande l'accès complet pour utiliser les outils d'interface de NeoBase. NeoBase ne l'ouvre que si elle est signée.
 const HTML = "<div class=\"appWrap\">\n      <div class=\"agHead\"><span class=\"label\">Astropole</span><span class=\"hint\" id=\"ciInfo\"></span><div class=\"agNav\"><span class=\"row\" id=\"ciBuy\"><button class=\"btn px\" data-k=\"1\">×1</button><button class=\"btn px\" data-k=\"10\">×10</button><button class=\"btn px\" data-k=\"100\">×100</button><button class=\"btn px\" data-k=\"max\">MAX</button></span><button class=\"btn main px\" id=\"ciColony\" title=\"Tout recommencer avec des Mémoires qui multiplient la production\">NOUVELLE COLONIE</button></div></div>\n      <div class=\"gameBox g169\"><canvas id=\"ciCanvas\" width=\"384\" height=\"216\"></canvas></div>\n      <div class=\"ciList\" id=\"ciList\"></div>\n      <div class=\"hint\">La ville produit des crédits chaque seconde, même quand NeoBase est fermé : à l'ouverture, tout le temps passé est compté (depuis la dernière sauvegarde, sur n'importe lequel de tes PC). Achète des bâtiments ; tous les 25 d'un même bâtiment, sa production double, et chaque nouveau type en débloque un autre, sans fin (après les 16 premiers viennent les mégastructures). Clic sur la ville : 1 seconde de production ; clic sur un cargo doré : 30 secondes. Après 1 billion de crédits produits, « Nouvelle colonie » recommence tout avec des Mémoires (+10 % de production chacune, pour toujours). Les nombres n'ont pas de limite. Sauvegardé et synchronisé.</div>\n    </div>";
+/*CSS-MOVED*/ const CSS = `.gameBox{display:grid;place-items:center;padding:10px;background:#05010b;box-shadow:0 0 0 3px var(--line2)}
+.ciList{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:8px}
+.ciRow{--fill:var(--win);display:flex;align-items:center;gap:10px;padding:8px 10px}
+.ciDot{width:10px;height:10px;flex:none}
+.ciTxt{flex:1;display:flex;flex-direction:column;min-width:0}
+.ciTxt small{color:var(--muted)}
+.ciBtn{flex:none;min-width:110px;font-size:12px;white-space:nowrap}
+.gameBox canvas{width:min(100%,1152px);aspect-ratio:384/144;image-rendering:pixelated;cursor:var(--cp,pointer)}
+.gameBox.tall canvas{width:auto;height:min(720px,72vh);aspect-ratio:240/320}
+.gameBox.g169 canvas{aspect-ratio:384/216;width:min(100%,calc((100vh - 250px) * 1.777))}
+`;  // le style de ce plugin (il utilise les variables du thème de NeoBase)
 export default async function (ctx) {
   const view = ctx.view;
   if (!ctx.host) { view.textContent = "Ce plugin doit être approuvé par NeoBase pour s'ouvrir."; return; }
   const host = ctx.host, { el, toast, sfx, ask, newTab, pixIcon, PIX, WX } = host;
   const folder = ctx.folder, legacy = ctx.legacy || {};
+  ctx.host.addStyle(CSS);
   view.innerHTML = HTML;
   const $ = id => id === "cityApp" ? view : (view.querySelector('#' + id) || document.getElementById(id));  // les identifiants de ta vue d'abord, puis ceux de la page (fenêtres, menus)
   const doc = async n => { try { return await folder.read(n); } catch { return null; } };
