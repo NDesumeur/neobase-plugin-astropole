@@ -1,9 +1,9 @@
 {
   "pluginId": "neodex.astropole",
   "repo": "NDesumeur/neodex-plugin-astropole",
-  "version": "1.3.0",
-  "sha256": "778be6e2dddf2c1c2236e65b979252399d47f07aab51ac5e71d701635c8b4c08",
-  "approvedAt": "2026-11-04T10:05:10.864Z",
+  "version": "1.3.1",
+  "sha256": "48c989bf02347f36e3bc29758fd95c56307549b6857e3c728f53b769aa0c5c61",
+  "approvedAt": "2026-11-06T21:35:47.951Z",
   "neobase": ">=4.0.0",
-  "signature": "Te0u/fOGy/WUTECDEfNc1YSf21xVtChprE+HFXPNqZAxsgRI7Yu1mLqyu5RAghRzwqshkbhRDWRj82ryJQOcBg=="
+  "signature": "f7C5RsF96nhr4iuFUky4xxVKB1BEUOzGD2kR3K918w1BZoasljsKXtIYM08/wg/6C46zXVyzsE6MjepRhUnJCg=="
 }
