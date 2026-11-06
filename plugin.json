@@ -10,6 +10,8 @@
   "neobase": ">=4.0.0",
   "type": "app",
   "category": "Jeux",
+  "syncMode": "progression",
+  "syncInfo": "Partie, ressources, déblocages.",
   "mobile": false,
   "system": false,
   "dependencies": {},
